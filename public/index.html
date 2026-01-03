@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>thermal-print-node - Thermal Printer Server</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .printer-icon {
+            text-align: center;
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 150px;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 600;
+            display: none;
+        }
+
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+
+        .char-count {
+            text-align: right;
+            color: #999;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .tips {
+            background-color: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-top: 30px;
+            border-radius: 5px;
+        }
+
+        .tips h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .tips ul {
+            margin-left: 20px;
+            color: #666;
+        }
+
+        .tips li {
+            margin-bottom: 5px;
+        }
+
+        .quick-btn {
+            padding: 12px 10px;
+            font-size: 14px;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .quick-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="printer-icon">🖨️</div>
+        <h1>CoolPrinter</h1>
+        <p class="subtitle">Print your reminders and notes instantly</p>
+
+        <!-- Tab Navigation -->
+        <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+            <button type="button" onclick="showTab('text')" id="textTab" style="flex: 1; min-width: 100px; padding: 10px 20px; margin: 0;">
+                📝 Text
+            </button>
+            <button type="button" onclick="showTab('image')" id="imageTab" style="flex: 1; min-width: 100px; padding: 10px 20px; margin: 0; background: #888;">
+                🖼️ Image
+            </button>
+            <button type="button" onclick="showTab('quick')" id="quickTab" style="flex: 1; min-width: 100px; padding: 10px 20px; margin: 0; background: #888;">
+                ⚡ Quick Print
+            </button>
+        </div>
+
+        <!-- Text Form -->
+        <form id="printForm" class="tab-content">
+            <label for="reminder">Enter your reminder or note:</label>
+            <textarea 
+                id="reminder" 
+                name="reminder" 
+                placeholder="Type your reminder here... (e.g., Buy groceries, Call dentist, Meeting at 3 PM)"
+                required
+                maxlength="1000"
+            ></textarea>
+            <div class="char-count">
+                <span id="charCount">0</span> / 1000 characters
+            </div>
+
+            <button type="submit" id="printBtn">
+                🖨️ Print Reminder
+            </button>
+        </form>
+
+        <!-- Image Form -->
+        <form id="imageForm" class="tab-content" style="display: none;">
+            <label for="imageFile">Choose an image to print:</label>
+            <input 
+                type="file" 
+                id="imageFile" 
+                name="image" 
+                accept="image/*"
+                required
+                style="width: 100%; padding: 15px; border: 2px dashed #667eea; border-radius: 10px; margin-bottom: 10px; cursor: pointer;"
+            >
+            <div style="color: #666; font-size: 0.9em; margin-bottom: 15px;">
+                📷 Supported: JPG, PNG, GIF, BMP, WebP<br>
+                ✨ Image will be auto-dithered for thermal printing
+            </div>
+            <div id="imagePreview" style="text-align: center; margin: 15px 0; display: none;">
+                <img id="preview" style="max-width: 100%; max-height: 300px; border-radius: 10px; border: 2px solid #e0e0e0;">
+            </div>
+
+            <button type="submit" id="printImageBtn">
+                🖨️ Print Image
+            </button>
+        </form>
+
+        <!-- Quick Print Actions -->
+        <div id="quickForm" class="tab-content" style="display: none;">
+            <label>Quick Print Actions:</label>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-top: 15px;">
+                <button type="button" onclick="quickPrint('/print-quote')" class="quick-btn">
+                    💬 Quote
+                </button>
+                <button type="button" onclick="quickPrint('/print-joke')" class="quick-btn">
+                    😂 Joke
+                </button>
+                <button type="button" onclick="quickPrint('/print-fortune')" class="quick-btn">
+                    🥠 Fortune
+                </button>
+                <button type="button" onclick="quickPrint('/print-time')" class="quick-btn">
+                    🕐 Time/Date
+                </button>
+                <button type="button" onclick="quickPrint('/print-fact')" class="quick-btn">
+                    🧠 Random Fact
+                </button>
+                <button type="button" onclick="quickPrint('/print-weather')" class="quick-btn">
+                    🌤️ Weather
+                </button>
+                <button type="button" onclick="quickPrint('/print-affirmation')" class="quick-btn">
+                    ✨ Affirmation
+                </button>
+                <button type="button" onclick="quickPrint('/print-compliment')" class="quick-btn">
+                    💝 Compliment
+                </button>
+                <button type="button" onclick="quickPrint('/print-trivia')" class="quick-btn">
+                    ❓ Trivia
+                </button>
+                <button type="button" onclick="quickPrint('/print-coinflip')" class="quick-btn">
+                    🪙 Coin Flip
+                </button>
+                <button type="button" onclick="quickPrint('/print-dice')" class="quick-btn">
+                    🎲 Roll Dice
+                </button>
+                <button type="button" onclick="quickPrint('/print-8ball')" class="quick-btn">
+                    🎱 Magic 8-Ball
+                </button>
+                <button type="button" onclick="quickPrint('/print-moon')" class="quick-btn">
+                    🌙 Moon Phase
+                </button>
+                <button type="button" onclick="quickPrint('/print-iss')" class="quick-btn">
+                    🛰️ ISS Location
+                </button>
+                <button type="button" onclick="quickPrint('/print-word')" class="quick-btn">
+                    📖 Word of Day
+                </button>
+                <button type="button" onclick="quickPrint('/print-apod')" class="quick-btn">
+                    🌌 NASA APOD
+                </button>
+                <button type="button" onclick="quickPrint('/print-crypto?coins=bitcoin,ethereum')" class="quick-btn">
+                    ₿ Crypto Prices
+                </button>
+                <button type="button" onclick="quickPrint('/print-nvidia-stock')" class="quick-btn">
+                    📈 NVIDIA Stock
+                </button>
+            </div>
+            
+            <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 10px;">
+                <strong>Advanced Options:</strong>
+                <div style="margin-top: 10px;">
+                    <input type="text" id="customUrl" placeholder="Enter custom endpoint or parameters..." 
+                        style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 5px; margin-bottom: 10px;">
+                    <button type="button" onclick="customQuickPrint()" style="width: 100%; padding: 10px;">
+                        🚀 Custom Print
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="message" class="message"></div>
+
+        <!-- View All Endpoints Button -->
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="/endpoints" target="_blank" style="display: inline-block; padding: 12px 24px; background: #28a745; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; transition: transform 0.2s;">
+                📚 View All API Endpoints
+            </a>
+        </div>
+
+        <div class="tips">
+            <h3>💡 Tips:</h3>
+            <ul>
+                <li>Keep reminders concise for best printing results</li>
+                <li>Use line breaks for better readability</li>
+                <li>Each print includes a timestamp</li>
+                <li>Images are auto-resized and dithered for thermal printing</li>
+                <li>Quick Print offers instant access to fun endpoints</li>
+                <li>Try custom endpoints like /print-qr?text=Hello or /print-crypto?coins=bitcoin</li>
+                <li>Make sure your printer is powered on and connected</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        function showTab(tab) {
+            const textTab = document.getElementById('textTab');
+            const imageTab = document.getElementById('imageTab');
+            const quickTab = document.getElementById('quickTab');
+            const printForm = document.getElementById('printForm');
+            const imageForm = document.getElementById('imageForm');
+            const quickForm = document.getElementById('quickForm');
+            
+            // Reset all tabs
+            textTab.style.background = '#888';
+            imageTab.style.background = '#888';
+            quickTab.style.background = '#888';
+            printForm.style.display = 'none';
+            imageForm.style.display = 'none';
+            quickForm.style.display = 'none';
+            
+            // Show selected tab
+            if (tab === 'text') {
+                textTab.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                printForm.style.display = 'block';
+            } else if (tab === 'image') {
+                imageTab.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                imageForm.style.display = 'block';
+            } else if (tab === 'quick') {
+                quickTab.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                quickForm.style.display = 'block';
+            }
+        }
+
+        // Quick print function
+        async function quickPrint(endpoint) {
+            const message = document.getElementById('message');
+            showMessage('🖨️ Printing...', 'success');
+            
+            try {
+                const response = await fetch(endpoint);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage(`✅ ${data.message || 'Printed successfully!'}`, 'success');
+                } else {
+                    showMessage(`❌ ${data.error || 'Print failed'}`, 'error');
+                }
+            } catch (error) {
+                showMessage('❌ Connection error. Make sure the server is running.', 'error');
+                console.error('Error:', error);
+            }
+        }
+
+        // Custom quick print
+        async function customQuickPrint() {
+            const customUrl = document.getElementById('customUrl').value.trim();
+            if (!customUrl) {
+                showMessage('Please enter an endpoint or URL', 'error');
+                return;
+            }
+            
+            // Add leading slash if not present
+            const endpoint = customUrl.startsWith('/') ? customUrl : '/' + customUrl;
+            await quickPrint(endpoint);
+        }
+
+        // Image preview
+        document.getElementById('imageFile').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    document.getElementById('preview').src = e.target.result;
+                    document.getElementById('imagePreview').style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        const form = document.getElementById('printForm');
+        const textarea = document.getElementById('reminder');
+        const charCount = document.getElementById('charCount');
+        const message = document.getElementById('message');
+        const printBtn = document.getElementById('printBtn');
+
+        // Character counter
+        textarea.addEventListener('input', () => {
+            const count = textarea.value.length;
+            charCount.textContent = count;
+        });
+
+        // Form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const reminder = textarea.value.trim();
+
+            if (!reminder) {
+                showMessage('Please enter a reminder to print', 'error');
+                return;
+            }
+
+            // Disable button and show loading state
+            printBtn.disabled = true;
+            printBtn.textContent = '🖨️ Printing...';
+
+            try {
+                const response = await fetch('/print', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ reminder }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showMessage('✅ Reminder printed successfully!', 'success');
+                    textarea.value = '';
+                    charCount.textContent = '0';
+                } else {
+                    showMessage(`❌ ${data.error}${data.help ? ' - ' + data.help : ''}`, 'error');
+                }
+            } catch (error) {
+                showMessage('❌ Connection error. Make sure the server is running.', 'error');
+                console.error('Error:', error);
+            } finally {
+                // Re-enable button
+                printBtn.disabled = false;
+                printBtn.textContent = '🖨️ Print Reminder';
+            }
+        });
+
+        // Image form submission
+        const imageForm = document.getElementById('imageForm');
+        const printImageBtn = document.getElementById('printImageBtn');
+
+        imageForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const fileInput = document.getElementById('imageFile');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                showMessage('Please select an image to print', 'error');
+                return;
+            }
+
+            // Disable button and show loading state
+            printImageBtn.disabled = true;
+            printImageBtn.textContent = '🖨️ Processing & Printing...';
+
+            try {
+                const formData = new FormData();
+                formData.append('image', file);
+
+                const response = await fetch('/print-image', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showMessage('✅ Image printed successfully!', 'success');
+                    fileInput.value = '';
+                    document.getElementById('imagePreview').style.display = 'none';
+                } else {
+                    showMessage(`❌ ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showMessage('❌ Connection error. Make sure the server is running.', 'error');
+                console.error('Error:', error);
+            } finally {
+                // Re-enable button
+                printImageBtn.disabled = false;
+                printImageBtn.textContent = '🖨️ Print Image';
+            }
+        });
+
+        function showMessage(text, type) {
+            message.textContent = text;
+            message.className = `message ${type}`;
+            message.style.display = 'block';
+
+            // Auto-hide success messages after 5 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    message.style.display = 'none';
+                }, 5000);
+            }
+        }
+    </script>
+</body>
+</html>

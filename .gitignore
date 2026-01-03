@@ -1,0 +1,4 @@
+# Keep your secrets safe!
+node_modules/
+.env
+*.prn
